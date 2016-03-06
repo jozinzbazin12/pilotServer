@@ -30,7 +30,8 @@ public class TextAction extends Action {
 	@Override
 	public String toString() {
 		StringBuilder str = new StringBuilder();
-		str.append("Action: ").append(this.getClass().getSimpleName()).append(", ").append(text);
+		str.append(super.toString());
+		str.append(", ").append(text);
 		return str.toString();
 	}
 }

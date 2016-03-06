@@ -19,5 +19,12 @@ public abstract class Action implements Serializable {
 			throw new RuntimeException(e);
 		}
 	}
+	
+	@Override
+	public String toString() {
+		StringBuilder str = new StringBuilder();
+		str.append("Action: ").append(this.getClass().getSimpleName());
+		return str.toString();
+	}
 
 }
