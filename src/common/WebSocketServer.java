@@ -1,5 +1,6 @@
 package common;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -35,6 +36,7 @@ public class WebSocketServer {
 	private void init() {
 		try {
 			server = new ServerSocket(5555);
+			System.out.println("Waiting...");
 			socket = server.accept();
 			socket.setReuseAddress(false);
 			socket.setKeepAlive(true);
@@ -42,14 +44,27 @@ public class WebSocketServer {
 			e.printStackTrace();
 		}
 	}
+	public void restart(){
+		try {
+			server.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		init();
+	}
 
-	public static void main(String... args) throws InterruptedException, IOException {
+	public static void main(String... args) {
 		WebSocketServer server = getInstance();
-		server.listen();
+		while (true) {
+			try {
+				server.listen();
+			} catch (Exception e) {
+				server.restart();
+			}
+		}
 	}
 
 	private void listen() throws InterruptedException, IOException {
-		System.out.println("Waiting...");
 		InputStream inputStream = socket.getInputStream();
 		OutputStream outputStream = socket.getOutputStream();
 		while (!socket.isConnected() && inputStream.available() == 0) {
@@ -58,7 +73,7 @@ public class WebSocketServer {
 		System.out.println("connected");
 		input = new ObjectInputStream(inputStream);
 		output = new ObjectOutputStream(outputStream);
-		aaa();
+		estabilish();
 		Response res = null;
 		errorCount = 0;
 		while (!socket.isClosed()) {
@@ -67,7 +82,7 @@ public class WebSocketServer {
 				System.out.println(a);
 				a.doAction();
 				res = new Response(Status.OK);
-			} catch (SocketException e) {
+			} catch (SocketException | EOFException e) {
 				Thread.sleep(1000);
 				errorCount++;
 				e.printStackTrace();
@@ -79,12 +94,11 @@ public class WebSocketServer {
 				res = new Response(Status.NOT_OK, e);
 			}
 			sendResponse(output, res);
-			Thread.sleep(20);
 			errorCount = 0;
 		}
 	}
 
-	private void aaa() throws IOException {
+	private void estabilish() throws IOException {
 		Response r;
 		try {
 			r = (Response) input.readObject();
@@ -102,8 +116,8 @@ public class WebSocketServer {
 		if (errorCount <= ERROR_THRESHOLD) {
 			return false;
 		}
-		return true;
-		// throw new RuntimeException("Connection lost");
+		// return true;
+		throw new RuntimeException("Connection lost");
 	}
 
 	private void sendResponse(ObjectOutputStream output, Response res) {
@@ -112,6 +126,7 @@ public class WebSocketServer {
 			try {
 				output.writeObject(res);
 				output.flush();
+				return;
 			} catch (IOException e) {
 				e.printStackTrace();
 				error = true;
