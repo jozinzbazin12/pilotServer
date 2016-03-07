@@ -23,4 +23,11 @@ public class MouseMoveAction extends Action {
 		this.dy = dy;
 	}
 	
+	@Override
+	public String toString() {
+		StringBuilder str = new StringBuilder();
+		str.append(super.toString());
+		str.append(", dx:").append(dx).append(", dy:").append(dy);
+		return str.toString();
+	}
 }
