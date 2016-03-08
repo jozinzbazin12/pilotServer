@@ -14,6 +14,7 @@ import common.actions.Action;
 
 public class WebSocketServer {
 
+	private static int port = 5555;
 	private static final int ERROR_THRESHOLD = 5;
 	private static WebSocketServer instance;
 	private ServerSocket server;
@@ -35,8 +36,8 @@ public class WebSocketServer {
 
 	private void init() {
 		try {
-			server = new ServerSocket(5555);
-			System.out.println("Waiting...");
+			server = new ServerSocket(port);
+			System.out.println("Waiting for connection on port " + port + "...");
 			socket = server.accept();
 			socket.setReuseAddress(false);
 			socket.setKeepAlive(true);
@@ -44,7 +45,8 @@ public class WebSocketServer {
 			e.printStackTrace();
 		}
 	}
-	public void restart(){
+
+	public void restart() {
 		try {
 			server.close();
 		} catch (IOException e) {
@@ -54,6 +56,9 @@ public class WebSocketServer {
 	}
 
 	public static void main(String... args) {
+		if (args.length > 0) {
+			port = Integer.parseInt(args[0]);
+		}
 		WebSocketServer server = getInstance();
 		while (true) {
 			try {
