@@ -1,4 +1,4 @@
-package common;
+package common.server;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -10,11 +10,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import common.Response;
+import common.Status;
 import common.actions.Action;
 
 public class WebSocketServer {
 
-	private static int port = 5555;
+	private int port = 5555;
 	private static final int ERROR_THRESHOLD = 5;
 	private static WebSocketServer instance;
 	private ServerSocket server;
@@ -22,8 +24,11 @@ public class WebSocketServer {
 	private int errorCount;
 	private ObjectInputStream input;
 	private ObjectOutputStream output;
+	private ServerState status = ServerState.SHUTDOWN;
+	private ServerCommand command = ServerCommand.NOTHING;
+	private Thread thread;
 
-	private static synchronized WebSocketServer getInstance() {
+	public static synchronized WebSocketServer getInstance() {
 		if (instance == null) {
 			instance = new WebSocketServer();
 		}
@@ -31,13 +36,57 @@ public class WebSocketServer {
 	}
 
 	private WebSocketServer() {
-		init();
+		thread = new Thread() {
+			@Override
+			public void run() {
+				while (true) {
+					try {
+						if (getCommand() == ServerCommand.START && getStatus() == ServerState.WAITING) {
+							listen();
+
+						} else if (getCommand() == ServerCommand.START && getStatus() == ServerState.SHUTDOWN) {
+							_start();
+						} else if (getCommand() == ServerCommand.STOP) {
+							_stop();
+						}
+						sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					} catch (Exception e) {
+						e.printStackTrace();
+						_stop();
+						setCommand(ServerCommand.START);
+						setStatus(ServerState.SHUTDOWN);
+					}
+				}
+
+			}
+		};
+		thread.start();
 	}
 
-	private void init() {
+	public void start() {
+		setCommand(ServerCommand.START);
+	}
+
+	public void stop() {
+		setCommand(ServerCommand.STOP);
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		thread.interrupt();
+		if (getStatus() != ServerState.SHUTDOWN) {
+			_stop();
+		}
+	}
+
+	private void _start() {
 		try {
 			server = new ServerSocket(port);
 			System.out.println("Waiting for connection on port " + port + "...");
+			setStatus(ServerState.WAITING);
 			socket = server.accept();
 			socket.setReuseAddress(false);
 			socket.setKeepAlive(true);
@@ -46,27 +95,21 @@ public class WebSocketServer {
 		}
 	}
 
-	public void restart() {
-		try {
-			server.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		init();
-	}
-
-	public static void main(String... args) {
-		if (args.length > 0) {
-			port = Integer.parseInt(args[0]);
-		}
-		WebSocketServer server = getInstance();
-		while (true) {
+	private void _stop() {
+		if (!server.isClosed()) {
 			try {
-				server.listen();
-			} catch (Exception e) {
-				server.restart();
+				server.close();
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
+		setStatus(ServerState.SHUTDOWN);
+		setCommand(ServerCommand.STOP);
+	}
+
+	public void restart() {
+		stop();
+		start();
 	}
 
 	private void listen() throws InterruptedException, IOException {
@@ -81,7 +124,8 @@ public class WebSocketServer {
 		estabilish();
 		Response res = null;
 		errorCount = 0;
-		while (!socket.isClosed()) {
+		setStatus(ServerState.CONNECTED);
+		while (!socket.isClosed() && getCommand() == ServerCommand.START) {
 			try {
 				Action a = (Action) input.readObject();
 				System.out.println(a);
@@ -92,6 +136,7 @@ public class WebSocketServer {
 				errorCount++;
 				e.printStackTrace();
 				isError();
+				setStatus(ServerState.CONNECTION_ERROR);
 				continue;
 			} catch (Exception e) {
 				System.out.println("Exception occured:\n");
@@ -138,6 +183,26 @@ public class WebSocketServer {
 				errorCount++;
 			}
 		}
+	}
+
+	public synchronized ServerState getStatus() {
+		return status;
+	}
+
+	public void setPort(int port) {
+		this.port = port;
+	}
+
+	private synchronized ServerCommand getCommand() {
+		return command;
+	}
+
+	private synchronized void setCommand(ServerCommand command) {
+		this.command = command;
+	}
+
+	private synchronized void setStatus(ServerState state) {
+		this.status = state;
 	}
 
 }
