@@ -10,13 +10,17 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import common.Response;
 import common.Status;
 import common.actions.Action;
 
 public class WebSocketServer {
 
-	private int port = 5555;
+	private static final Logger log = LogManager.getLogger();
+	private int port;
 	private static final int ERROR_THRESHOLD = 5;
 	private static WebSocketServer instance;
 	private ServerSocket server;
@@ -43,7 +47,6 @@ public class WebSocketServer {
 					try {
 						if (getCommand() == ServerCommand.START && getStatus() == ServerState.WAITING) {
 							listen();
-
 						} else if (getCommand() == ServerCommand.START && getStatus() == ServerState.SHUTDOWN) {
 							_start();
 						} else if (getCommand() == ServerCommand.STOP) {
@@ -51,9 +54,9 @@ public class WebSocketServer {
 						}
 						sleep(1000);
 					} catch (InterruptedException e) {
-						e.printStackTrace();
+						log.catching(e.fillInStackTrace());
 					} catch (Exception e) {
-						e.printStackTrace();
+						log.catching(e);
 						_stop();
 						setCommand(ServerCommand.START);
 						setStatus(ServerState.SHUTDOWN);
@@ -65,8 +68,9 @@ public class WebSocketServer {
 		thread.start();
 	}
 
-	public void start() {
+	public void start(int port) {
 		setCommand(ServerCommand.START);
+		this.port = port;
 	}
 
 	public void stop() {
@@ -74,7 +78,7 @@ public class WebSocketServer {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			log.catching(e);
 		}
 		thread.interrupt();
 		if (getStatus() != ServerState.SHUTDOWN) {
@@ -85,13 +89,13 @@ public class WebSocketServer {
 	private void _start() {
 		try {
 			server = new ServerSocket(port);
-			System.out.println("Waiting for connection on port " + port + "...");
+			log.info("Waiting for connection on port " + port + "...");
 			setStatus(ServerState.WAITING);
 			socket = server.accept();
 			socket.setReuseAddress(false);
 			socket.setKeepAlive(true);
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.catching(e);
 		}
 	}
 
@@ -100,7 +104,7 @@ public class WebSocketServer {
 			try {
 				server.close();
 			} catch (IOException e) {
-				e.printStackTrace();
+				log.catching(e);
 			}
 		}
 		setStatus(ServerState.SHUTDOWN);
@@ -109,7 +113,7 @@ public class WebSocketServer {
 
 	public void restart() {
 		stop();
-		start();
+		start(port);
 	}
 
 	private void listen() throws InterruptedException, IOException {
@@ -118,7 +122,7 @@ public class WebSocketServer {
 		while (!socket.isConnected() && inputStream.available() == 0) {
 			Thread.sleep(1000);
 		}
-		System.out.println("connected");
+		log.info("connected");
 		input = new ObjectInputStream(inputStream);
 		output = new ObjectOutputStream(outputStream);
 		estabilish();
@@ -128,19 +132,18 @@ public class WebSocketServer {
 		while (!socket.isClosed() && getCommand() == ServerCommand.START) {
 			try {
 				Action a = (Action) input.readObject();
-				System.out.println(a);
+				log.debug(a);
 				a.doAction();
 				res = new Response(Status.OK);
 			} catch (SocketException | EOFException e) {
 				Thread.sleep(1000);
 				errorCount++;
-				e.printStackTrace();
+				log.catching(e);
 				isError();
 				setStatus(ServerState.CONNECTION_ERROR);
 				continue;
 			} catch (Exception e) {
-				System.out.println("Exception occured:\n");
-				e.printStackTrace();
+				log.catching(e);
 				res = new Response(Status.NOT_OK, e);
 			}
 			sendResponse(output, res);
@@ -157,7 +160,7 @@ public class WebSocketServer {
 				output.writeObject(r);
 			}
 		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
+			log.catching(e);
 		}
 
 	}
@@ -178,7 +181,7 @@ public class WebSocketServer {
 				output.flush();
 				return;
 			} catch (IOException e) {
-				e.printStackTrace();
+				log.catching(e);
 				error = true;
 				errorCount++;
 			}

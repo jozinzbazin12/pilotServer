@@ -1,18 +1,54 @@
 package common.server;
 
+import java.nio.charset.Charset;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.ConsoleAppender;
+import org.apache.logging.log4j.core.config.AppenderRef;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
+
 import common.ui.ServerWindow;
 
 public class Main {
 
+	private static final String CONSOLE = "console";
+	private static int port = 5555;
+
+	private static void configureLogger() {
+		LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+		Configuration config = ctx.getConfiguration();
+		PatternLayout layout = PatternLayout.createLayout("[%d{dd.MM.YY HH:mm:ss}] [%p] - %m%ex%n", null, null, null,
+				Charset.defaultCharset(), false, false, null, null);
+		Appender appender = ConsoleAppender.createDefaultAppenderForLayout(layout);
+		appender.start();
+		AppenderRef ref = AppenderRef.createAppenderRef("CONSOLE_APPENDER", null, null);
+		AppenderRef[] refs = new AppenderRef[] { ref };
+		LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, "CONSOLE_LOGGER", "", refs, null, config,
+				null);
+		loggerConfig.addAppender(appender, null, null);
+
+		config.addAppender(appender);
+		config.addLogger("", loggerConfig);
+		ctx.updateLoggers(config);
+	}
+
 	public static void main(String... args) {
-		new ServerWindow();
-//		while (true) {
-//			try {
-//				server.listen();
-//				server.setState(ServerState.SHUTDOWN);
-//			} catch (Exception e) {
-//				server.restart();
-//			}
-//		}
+		configureLogger();
+		if (args.length >= 1) {
+			if (args[0].equals(CONSOLE)) {
+				WebSocketServer server = WebSocketServer.getInstance();
+				if (args.length == 2) {
+					port = Integer.parseInt(args[1]);
+				}
+				server.start(port);
+			}
+		} else {
+			new ServerWindow();
+		}
 	}
 }
