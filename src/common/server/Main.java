@@ -12,6 +12,7 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 
+import common.ui.JTextAreaAppender;
 import common.ui.ServerWindow;
 
 public class Main {
@@ -19,14 +20,20 @@ public class Main {
 	private static final String CONSOLE = "console";
 	private static int port = 5555;
 
-	private static void configureLogger() {
+	private static void configureLogger(boolean window) {
 		LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
 		Configuration config = ctx.getConfiguration();
 		PatternLayout layout = PatternLayout.createLayout("[%d{dd.MM.YY HH:mm:ss}] [%p] - %m%ex%n", null, null, null,
 				Charset.defaultCharset(), false, false, null, null);
-		Appender appender = ConsoleAppender.createDefaultAppenderForLayout(layout);
+		Appender appender;
+		if (window) {
+			appender = JTextAreaAppender.createAppender("SWING_APPENDER", 0, false, layout, null);
+		} else {
+			appender = ConsoleAppender.createDefaultAppenderForLayout(layout);
+		}
 		appender.start();
 		AppenderRef ref = AppenderRef.createAppenderRef("CONSOLE_APPENDER", null, null);
+
 		AppenderRef[] refs = new AppenderRef[] { ref };
 		LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.INFO, "CONSOLE_LOGGER", "", refs, null, config,
 				null);
@@ -38,8 +45,8 @@ public class Main {
 	}
 
 	public static void main(String... args) {
-		configureLogger();
 		if (args.length >= 1) {
+			configureLogger(false);
 			if (args[0].equals(CONSOLE)) {
 				WebSocketServer server = WebSocketServer.getInstance();
 				if (args.length == 2) {
@@ -48,6 +55,7 @@ public class Main {
 				server.start(port);
 			}
 		} else {
+			configureLogger(true);
 			new ServerWindow();
 		}
 	}

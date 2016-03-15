@@ -1,5 +1,8 @@
 package common.ui;
 
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -16,6 +19,8 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
@@ -53,7 +58,6 @@ public class ServerWindow extends JFrame implements ActionListener {
 		server = WebSocketServer.getInstance();
 		setTitle(CONTROLLER_SERVER);
 		setSize(400, 600);
-		setResizable(false);
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
@@ -110,14 +114,24 @@ public class ServerWindow extends JFrame implements ActionListener {
 	}
 
 	private JPanel createLogPanel() {
-		JPanel panel = new JPanel();
+		JPanel panel = new JPanel(new BorderLayout());
 		panel.setBorder(BorderFactory.createTitledBorder("Logs"));
 		Level[] values = Level.values();
 		Arrays.sort(values);
 		levels = new JComboBox<>(values);
 		levels.addActionListener(this);
 		levels.setSelectedItem(log.getLevel());
-		panel.add(levels);
+		levels.setSize(new Dimension(200, 50));
+		panel.add(levels, BorderLayout.NORTH);
+
+		JTextArea textArea = new JTextArea();
+		textArea.setEditable(false);
+		textArea.setOpaque(false);
+		textArea.setFont(new Font("Arial", 0, 11));
+		JScrollPane scrollPanel = new JScrollPane(textArea);
+		JTextAreaAppender.addTextArea(textArea);
+		panel.add(scrollPanel);
+
 		return panel;
 	}
 
