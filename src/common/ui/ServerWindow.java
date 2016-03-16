@@ -1,17 +1,11 @@
 package common.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.net.InetAddress;
@@ -20,8 +14,8 @@ import java.util.Arrays;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -60,6 +54,8 @@ public class ServerWindow extends JFrame implements ActionListener {
 	private LoggerContext ctx;
 	private Settings settings;
 	private boolean error = false;
+	private JCheckBox autostart;
+	private JCheckBox restart;
 
 	public ServerWindow() {
 		settings = Settings.getSettings();
@@ -83,7 +79,8 @@ public class ServerWindow extends JFrame implements ActionListener {
 			public void windowClosing(WindowEvent we) {
 				if (server.getStatus() != ServerState.SHUTDOWN) {
 					String ObjButtons[] = { "Yes", "No" };
-					int PromptResult = JOptionPane.showOptionDialog(null, "Are you sure you want to exit?", CONTROLLER_SERVER,
+					int PromptResult = JOptionPane.showOptionDialog(null,
+							"Server is still running, are you sure you want to exit?", CONTROLLER_SERVER,
 							JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, ObjButtons, ObjButtons[1]);
 					if (PromptResult == JOptionPane.YES_OPTION) {
 						quit();
@@ -94,6 +91,10 @@ public class ServerWindow extends JFrame implements ActionListener {
 			}
 		});
 		revalidate();
+		if (settings.isAutostart()) {
+			server.start(settings.getPort());
+		}
+		server.setRestartOnError(settings.isRestartOnError());
 	}
 
 	private void quit() {
@@ -152,7 +153,7 @@ public class ServerWindow extends JFrame implements ActionListener {
 	}
 
 	private JPanel createSettingsPanel() {
-		JPanel panel = new JPanel(new GridLayout(4, 2));
+		JPanel panel = new JPanel(new GridLayout(5, 3));
 		panel.setBorder(BorderFactory.createTitledBorder("Server settings"));
 		JLabel ip = new JLabel("IP");
 		String hostAddress = "Error";
@@ -172,9 +173,17 @@ public class ServerWindow extends JFrame implements ActionListener {
 
 		panel.add(port);
 		panel.add(portInput);
+		autostart = new JCheckBox("Auto start server on startup", settings.isAutostart());
+		autostart.addActionListener(this);
+		panel.add(autostart);
+		restart = new JCheckBox("Restart on error", settings.isRestartOnError());
+		restart.addActionListener(this);
+		panel.add(restart);
 
 		JLabel state = new JLabel("Server state");
 		stateIndicator = new JLabel();
+		Font font = stateIndicator.getFont();
+		stateIndicator.setFont(new Font(font.getFontName(), Font.BOLD, font.getSize()));
 		panel.add(state);
 		panel.add(stateIndicator);
 
@@ -229,6 +238,12 @@ public class ServerWindow extends JFrame implements ActionListener {
 			log.info("Logger level changed to: " + level);
 			loggerConfig.setLevel(level);
 			ctx.updateLoggers();
+		} else if (e.getSource().equals(autostart)) {
+			settings.setAutostart(autostart.isSelected());
+		} else if (e.getSource().equals(restart)) {
+			boolean selected = restart.isSelected();
+			settings.setRestartOnError(selected);
+			server.setRestartOnError(selected);
 		}
 	}
 

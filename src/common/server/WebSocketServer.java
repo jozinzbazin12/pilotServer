@@ -31,6 +31,7 @@ public class WebSocketServer {
 	private ServerState status = ServerState.SHUTDOWN;
 	private ServerCommand command = ServerCommand.NOTHING;
 	private Thread thread;
+	private boolean restartOnError = false;
 
 	public static synchronized WebSocketServer getInstance() {
 		if (instance == null) {
@@ -58,8 +59,10 @@ public class WebSocketServer {
 					} catch (Exception e) {
 						log.catching(e);
 						_stop();
-						setCommand(ServerCommand.START);
 						setStatus(ServerState.SHUTDOWN);
+						if (restartOnError) {
+							setCommand(ServerCommand.START);
+						}
 					}
 				}
 
@@ -206,6 +209,10 @@ public class WebSocketServer {
 
 	private synchronized void setStatus(ServerState state) {
 		this.status = state;
+	}
+
+	public void setRestartOnError(boolean restartOnError) {
+		this.restartOnError = restartOnError;
 	}
 
 }

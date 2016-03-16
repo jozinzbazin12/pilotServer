@@ -24,8 +24,8 @@ public class Settings implements Serializable {
 
 	private int port = 5555;
 	private Level level = Level.ERROR;
-	private boolean autostart = true;
-	private boolean restartOnError = true;
+	private boolean autostart = false;
+	private boolean restartOnError = false;
 
 	private Settings() {
 	}
