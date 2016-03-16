@@ -1,11 +1,17 @@
 package common.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.net.InetAddress;
@@ -15,6 +21,7 @@ import java.util.Arrays;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -33,6 +40,7 @@ import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 
 import common.server.ServerState;
+import common.server.Settings;
 import common.server.WebSocketServer;
 
 public class ServerWindow extends JFrame implements ActionListener {
@@ -50,8 +58,11 @@ public class ServerWindow extends JFrame implements ActionListener {
 	private JComboBox<Level> levels;
 	private LoggerConfig loggerConfig;
 	private LoggerContext ctx;
+	private Settings settings;
+	private boolean error = false;
 
 	public ServerWindow() {
+		settings = Settings.getSettings();
 		ctx = (LoggerContext) LogManager.getContext(false);
 		Configuration config = ctx.getConfiguration();
 		loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
@@ -75,19 +86,24 @@ public class ServerWindow extends JFrame implements ActionListener {
 					int PromptResult = JOptionPane.showOptionDialog(null, "Are you sure you want to exit?", CONTROLLER_SERVER,
 							JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null, ObjButtons, ObjButtons[1]);
 					if (PromptResult == JOptionPane.YES_OPTION) {
-						System.exit(0);
+						quit();
 					}
 				} else {
-					System.exit(0);
+					quit();
 				}
 			}
 		});
 		revalidate();
 	}
 
+	private void quit() {
+		Settings.saveSettings();
+		System.exit(0);
+	}
+
 	private void initComponents() {
-		setLayout(new GridLayout(3, 1));
-		add(createSettingsPanel());
+		setLayout(new BorderLayout());
+		add(createSettingsPanel(), BorderLayout.NORTH);
 		add(createLogPanel());
 		monitorThread = new Thread() {
 			@Override
@@ -120,8 +136,8 @@ public class ServerWindow extends JFrame implements ActionListener {
 		Arrays.sort(values);
 		levels = new JComboBox<>(values);
 		levels.addActionListener(this);
-		levels.setSelectedItem(log.getLevel());
-		levels.setSize(new Dimension(200, 50));
+		levels.setSelectedItem(settings.getLevel());
+		levels.setMaximumSize(new Dimension(50, 20));
 		panel.add(levels, BorderLayout.NORTH);
 
 		JTextArea textArea = new JTextArea();
@@ -151,7 +167,9 @@ public class ServerWindow extends JFrame implements ActionListener {
 		panel.add(ipInput);
 
 		JLabel port = new JLabel("Port");
-		portInput = new JTextField("5555");
+		portInput = new JTextField(String.valueOf(settings.getPort()));
+		portInput.addActionListener(this);
+
 		panel.add(port);
 		panel.add(portInput);
 
@@ -170,20 +188,42 @@ public class ServerWindow extends JFrame implements ActionListener {
 	}
 
 	private void setServerRunnig(boolean b) {
-		start.setEnabled(!b);
+		if (!error) {
+			start.setEnabled(!b);
+		}
 		portInput.setEnabled(!b);
 		stop.setEnabled(b);
 	}
 
+	private void invalidValue() {
+		JOptionPane.showMessageDialog(new JFrame(), "Invalid port!", "Error", JOptionPane.ERROR_MESSAGE);
+		error = true;
+		start.setEnabled(false);
+	}
+
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		if (e.getSource().equals(start)) {
-			int text = Integer.parseInt(portInput.getText());
-			server.start(text);
+		if (e.getSource().equals(portInput)) {
+			String text = portInput.getText();
+			if (!text.isEmpty()) {
+				try {
+					int port = Integer.valueOf(text);
+					settings.setPort(port);
+					start.setEnabled(true);
+					error = false;
+				} catch (Exception ex) {
+					invalidValue();
+				}
+			} else {
+				invalidValue();
+			}
+		} else if (e.getSource().equals(start)) {
+			server.start(settings.getPort());
 		} else if (e.getSource().equals(stop)) {
 			server.stop();
 		} else if (e.getSource().equals(levels)) {
 			Level level = (Level) levels.getSelectedItem();
+			settings.setLevel(level);
 			loggerConfig.setLevel(Level.INFO);
 			ctx.updateLoggers();
 			log.info("Logger level changed to: " + level);

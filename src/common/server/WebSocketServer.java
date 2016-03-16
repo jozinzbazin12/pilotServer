@@ -122,7 +122,7 @@ public class WebSocketServer {
 		while (!socket.isConnected() && inputStream.available() == 0) {
 			Thread.sleep(1000);
 		}
-		log.info("connected");
+		log.info("Connected");
 		input = new ObjectInputStream(inputStream);
 		output = new ObjectOutputStream(outputStream);
 		estabilish();

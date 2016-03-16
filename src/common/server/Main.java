@@ -18,7 +18,6 @@ import common.ui.ServerWindow;
 public class Main {
 
 	private static final String CONSOLE = "console";
-	private static int port = 5555;
 
 	private static void configureLogger(boolean window) {
 		LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
@@ -45,14 +44,15 @@ public class Main {
 	}
 
 	public static void main(String... args) {
+		Settings settings = Settings.loadSettigs();
 		if (args.length >= 1) {
 			configureLogger(false);
 			if (args[0].equals(CONSOLE)) {
 				WebSocketServer server = WebSocketServer.getInstance();
 				if (args.length == 2) {
-					port = Integer.parseInt(args[1]);
+					settings.setPort(Integer.parseInt(args[1]));
 				}
-				server.start(port);
+				server.start(settings.getPort());
 			}
 		} else {
 			configureLogger(true);
