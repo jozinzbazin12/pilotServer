@@ -10,6 +10,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -56,16 +57,24 @@ public class WebSocketServer {
 						sleep(1000);
 					} catch (InterruptedException e) {
 						log.catching(e.fillInStackTrace());
+					} catch (DisconnectException e) {
+						log.info("Disconnected");
+						log.catching(Level.DEBUG, e);
+						onError();
 					} catch (Exception e) {
 						log.catching(e);
-						_stop();
-						setStatus(ServerState.SHUTDOWN);
-						if (restartOnError) {
-							setCommand(ServerCommand.START);
-						}
+						onError();
 					}
 				}
 
+			}
+
+			private void onError() {
+				_stop();
+				setStatus(ServerState.SHUTDOWN);
+				if (restartOnError) {
+					setCommand(ServerCommand.START);
+				}
 			}
 		};
 		thread.start();
@@ -145,6 +154,9 @@ public class WebSocketServer {
 				isError();
 				setStatus(ServerState.CONNECTION_ERROR);
 				continue;
+			} catch (DisconnectException e) {
+				sendResponse(output, new Response(Status.OK));
+				throw e;
 			} catch (Exception e) {
 				log.catching(e);
 				res = new Response(Status.NOT_OK, e);
