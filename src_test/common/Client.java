@@ -19,8 +19,7 @@ public class Client {
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 
-		TextAction obj = new TextAction();
-		obj.setText("dupa hahah 123");
+		TextAction obj = new TextAction("dupa hahah 123");
 		out.writeObject(obj);
 		out.flush();
 		System.out.println("ok");

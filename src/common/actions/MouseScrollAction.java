@@ -1,19 +1,24 @@
 package common.actions;
 
-public abstract class MouseButtonAction extends Action {
+public class MouseScrollAction extends Action {
 
 	private static final long serialVersionUID = 5858471459649534833L;
-	protected int key;
+	protected int lines;
 
-	public MouseButtonAction(int key) {
-		this.key = key;
+	@Override
+	public void doAction() {
+		robot.mouseWheel(lines);
+	}
+
+	public MouseScrollAction(int lines) {
+		this.lines = lines;
 	}
 
 	@Override
 	public String toString() {
 		StringBuilder str = new StringBuilder();
 		str.append(super.toString());
-		str.append(", ").append(key);
+		str.append(", ").append(lines);
 		return str.toString();
 	}
 

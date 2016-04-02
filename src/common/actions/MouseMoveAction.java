@@ -9,18 +9,15 @@ public class MouseMoveAction extends Action {
 	private double dx;
 	private double dy;
 
+	public MouseMoveAction(double dx, double dy) {
+		this.dx = dx;
+		this.dy = dy;
+	}
+
 	@Override
 	public void doAction() {
 		Point p = MouseInfo.getPointerInfo().getLocation();
 		robot.mouseMove((int) (p.x + dx), (int) (p.y + dy));
-	}
-
-	public void setDx(double dx) {
-		this.dx = dx;
-	}
-
-	public void setDy(double dy) {
-		this.dy = dy;
 	}
 	
 	@Override

@@ -11,6 +11,10 @@ public class TextAction extends Action {
 
 	private String text;
 
+	public TextAction(String text) {
+		this.text = text;
+	}
+
 	@Override
 	public void doAction() {
 		Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
@@ -21,10 +25,6 @@ public class TextAction extends Action {
 		robot.keyPress(KeyEvent.VK_V);
 		robot.keyRelease(KeyEvent.VK_V);
 		robot.keyRelease(KeyEvent.VK_CONTROL);
-	}
-
-	public void setText(String text) {
-		this.text = text;
 	}
 
 	@Override
