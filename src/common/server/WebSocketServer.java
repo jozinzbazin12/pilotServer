@@ -1,5 +1,6 @@
 package common.server;
 
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,17 +53,19 @@ public class WebSocketServer {
 						} else if (getCommand() == ServerCommand.START && getStatus() == ServerState.SHUTDOWN) {
 							_start();
 						} else if (getCommand() == ServerCommand.STOP) {
-							_stop();
+							if (getStatus() != ServerState.SHUTDOWN) {
+								_stop();
+							}
 						}
 						sleep(1000);
 					} catch (InterruptedException e) {
-						log.catching(e.fillInStackTrace());
+						log.catching(Level.DEBUG, e);
 					} catch (DisconnectException e) {
 						log.info("Disconnected");
 						log.catching(Level.DEBUG, e);
 						onError();
 					} catch (Exception e) {
-						log.catching(e);
+						log.catching(Level.DEBUG, e);
 						onError();
 					}
 				}
@@ -90,9 +93,10 @@ public class WebSocketServer {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			log.catching(e);
+			log.catching(Level.DEBUG, e);
 		}
 		thread.interrupt();
+
 		if (getStatus() != ServerState.SHUTDOWN) {
 			_stop();
 		}
@@ -101,26 +105,33 @@ public class WebSocketServer {
 	private void _start() {
 		try {
 			server = new ServerSocket(port);
-			log.info("Waiting for connection on port " + port + "...");
 			setStatus(ServerState.WAITING);
+			log.info("Waiting for connection on port " + port + "...");
 			socket = server.accept();
 			socket.setReuseAddress(false);
 			socket.setKeepAlive(true);
 		} catch (IOException e) {
-			log.catching(e);
+			log.catching(Level.DEBUG, e);
 		}
 	}
 
 	private void _stop() {
 		if (!server.isClosed()) {
-			try {
-				server.close();
-			} catch (IOException e) {
-				log.catching(e);
-			}
+			close(server);
+			close(input);
+			close(output);
 		}
 		setStatus(ServerState.SHUTDOWN);
 		setCommand(ServerCommand.STOP);
+		log.info("Server stopped");
+	}
+
+	private void close(Closeable c) {
+		try {
+			c.close();
+		} catch (IOException e) {
+			log.catching(Level.DEBUG, e);
+		}
 	}
 
 	public void restart() {
@@ -150,7 +161,7 @@ public class WebSocketServer {
 			} catch (SocketException | EOFException e) {
 				Thread.sleep(1000);
 				errorCount++;
-				log.catching(e);
+				log.catching(Level.DEBUG, e);
 				isError();
 				setStatus(ServerState.CONNECTION_ERROR);
 				continue;
@@ -175,7 +186,7 @@ public class WebSocketServer {
 				output.writeObject(r);
 			}
 		} catch (ClassNotFoundException e) {
-			log.catching(e);
+			log.catching(Level.DEBUG, e);
 		}
 
 	}
@@ -196,7 +207,7 @@ public class WebSocketServer {
 				output.flush();
 				return;
 			} catch (IOException e) {
-				log.catching(e);
+				log.catching(Level.DEBUG, e);
 				error = true;
 				errorCount++;
 			}
@@ -220,6 +231,9 @@ public class WebSocketServer {
 	}
 
 	private synchronized void setStatus(ServerState state) {
+		StringBuilder str = new StringBuilder();
+		str.append("Status changed from ").append(this.status).append(" to ").append(state).append(".");
+		log.debug(str.toString());
 		this.status = state;
 	}
 
