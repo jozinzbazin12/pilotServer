@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
+import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
@@ -18,6 +19,7 @@ import org.apache.logging.log4j.Logger;
 import common.Response;
 import common.Status;
 import common.actions.Action;
+import common.actions.LoginAction;
 
 public class WebSocketServer {
 
@@ -62,6 +64,13 @@ public class WebSocketServer {
 						log.catching(Level.DEBUG, e);
 					} catch (DisconnectException e) {
 						log.info("Disconnected");
+						log.catching(Level.DEBUG, e);
+						onError();
+					} catch (LoginException e) {
+						StringBuilder str = new StringBuilder();
+						str.append("User ").append(e.getWho()).append(", from ").append(e.getWhere())
+								.append(" tried to login with invalid password!");
+						log.info(str.toString());
 						log.catching(Level.DEBUG, e);
 						onError();
 					} catch (Exception e) {
@@ -127,10 +136,12 @@ public class WebSocketServer {
 	}
 
 	private void close(Closeable c) {
-		try {
-			c.close();
-		} catch (IOException e) {
-			log.catching(Level.DEBUG, e);
+		if (c != null) {
+			try {
+				c.close();
+			} catch (IOException e) {
+				log.catching(Level.DEBUG, e);
+			}
 		}
 	}
 
@@ -145,7 +156,7 @@ public class WebSocketServer {
 		while (!socket.isConnected() && inputStream.available() == 0) {
 			Thread.sleep(1000);
 		}
-		log.info("Connected");
+		log.info("Trying to connect...");
 		input = new ObjectInputStream(inputStream);
 		output = new ObjectOutputStream(outputStream);
 		estabilish();
@@ -178,17 +189,22 @@ public class WebSocketServer {
 	}
 
 	private void estabilish() throws IOException {
-		Response r;
+		LoginAction login;
 		try {
-			r = (Response) input.readObject();
-			if (r.getStatus() == Status.CLIENT_CONNECT) {
-				r.setStatus(Status.SERVER_OK);
-				output.writeObject(r);
-			}
+			login = (LoginAction) input.readObject();
+			login.setServerPassword(Settings.getSettings().getPassword());
+			login.doAction();
+			Response r = new Response(Status.SERVER_OK);
+			output.writeObject(r);
 		} catch (ClassNotFoundException e) {
 			log.catching(Level.DEBUG, e);
+			throw new ConnectException();
+		} catch (LoginException e) {
+			Response r = new Response(Status.INVALID_PASSWORD);
+			output.writeObject(r);
+			throw e;
 		}
-
+		log.info("Connected: "+login.getInfo()+", "+login.getIp());
 	}
 
 	private boolean isError() {

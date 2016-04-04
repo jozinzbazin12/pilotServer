@@ -39,6 +39,8 @@ import common.server.WebSocketServer;
 
 public class ServerWindow extends JFrame implements ActionListener {
 
+	private static final String INVALID_PASSWORD = "Invalid password!";
+	private static final String INVALID_PORT = "Invalid port!";
 	private static final String CONTROLLER_SERVER = "Controller server";
 	private static final Logger log = LogManager.getLogger();
 	private static final int SLEEP = 1000;
@@ -56,6 +58,7 @@ public class ServerWindow extends JFrame implements ActionListener {
 	private boolean error = false;
 	private JCheckBox autostart;
 	private JCheckBox restart;
+	private JTextField passwordInput;
 
 	public ServerWindow() {
 		settings = Settings.getSettings();
@@ -153,7 +156,7 @@ public class ServerWindow extends JFrame implements ActionListener {
 	}
 
 	private JPanel createSettingsPanel() {
-		JPanel panel = new JPanel(new GridLayout(5, 3));
+		JPanel panel = new JPanel(new GridLayout(6, 3));
 		panel.setBorder(BorderFactory.createTitledBorder("Server settings"));
 		JLabel ip = new JLabel("IP");
 		String hostAddress = "Error";
@@ -170,9 +173,15 @@ public class ServerWindow extends JFrame implements ActionListener {
 		JLabel port = new JLabel("Port");
 		portInput = new JTextField(String.valueOf(settings.getPort()));
 		portInput.addActionListener(this);
-
 		panel.add(port);
 		panel.add(portInput);
+
+		JLabel password = new JLabel("Password");
+		passwordInput = new JTextField(String.valueOf(settings.getPassword()));
+		passwordInput.addActionListener(this);
+		panel.add(password);
+		panel.add(passwordInput);
+
 		autostart = new JCheckBox("Auto start server on startup", settings.isAutostart());
 		autostart.addActionListener(this);
 		panel.add(autostart);
@@ -201,11 +210,12 @@ public class ServerWindow extends JFrame implements ActionListener {
 			start.setEnabled(!b);
 		}
 		portInput.setEnabled(!b);
+		passwordInput.setEnabled(!b);
 		stop.setEnabled(b);
 	}
 
-	private void invalidValue() {
-		JOptionPane.showMessageDialog(new JFrame(), "Invalid port!", "Error", JOptionPane.ERROR_MESSAGE);
+	private void invalidValue(String message) {
+		JOptionPane.showMessageDialog(new JFrame(), message, "Error", JOptionPane.ERROR_MESSAGE);
 		error = true;
 		start.setEnabled(false);
 	}
@@ -221,10 +231,23 @@ public class ServerWindow extends JFrame implements ActionListener {
 					start.setEnabled(true);
 					error = false;
 				} catch (Exception ex) {
-					invalidValue();
+					invalidValue(INVALID_PORT);
 				}
 			} else {
-				invalidValue();
+				invalidValue(INVALID_PORT);
+			}
+		} else if (e.getSource().equals(passwordInput)) {
+			String text = passwordInput.getText();
+			if (!text.isEmpty()) {
+				try {
+					settings.setPassword(text);
+					start.setEnabled(true);
+					error = false;
+				} catch (Exception ex) {
+					invalidValue(INVALID_PASSWORD);
+				}
+			} else {
+				invalidValue(INVALID_PASSWORD);
 			}
 		} else if (e.getSource().equals(start)) {
 			server.start(settings.getPort());
