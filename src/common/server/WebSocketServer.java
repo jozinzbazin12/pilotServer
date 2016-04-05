@@ -83,7 +83,6 @@ public class WebSocketServer {
 
 			private void onError() {
 				_stop();
-				setStatus(ServerState.SHUTDOWN);
 				if (restartOnError) {
 					setCommand(ServerCommand.START);
 				}
@@ -204,7 +203,7 @@ public class WebSocketServer {
 			output.writeObject(r);
 			throw e;
 		}
-		log.info("Connected: "+login.getInfo()+", "+login.getIp());
+		log.info("Connected: " + login.getInfo() + ", " + login.getIp());
 	}
 
 	private boolean isError() {
@@ -247,6 +246,9 @@ public class WebSocketServer {
 	}
 
 	private synchronized void setStatus(ServerState state) {
+		if (status == state) {
+			return;
+		}
 		StringBuilder str = new StringBuilder();
 		str.append("Status changed from ").append(this.status).append(" to ").append(state).append(".");
 		log.debug(str.toString());
